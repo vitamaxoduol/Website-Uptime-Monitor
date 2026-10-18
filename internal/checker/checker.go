@@ -1,4 +1,4 @@
-package internal
+package checker
 
 import (
 	"fmt"
@@ -10,6 +10,7 @@ type CheckResult struct {
 	URL          string
 	StatusCode   int
 	ResponseTime time.Duration
+	CheckedAt    time.Time
 }
 
 func CheckWebsite(client *http.Client, url string) (CheckResult, error) {
@@ -21,6 +22,7 @@ func CheckWebsite(client *http.Client, url string) (CheckResult, error) {
 	result := CheckResult{
 		URL:          url,
 		ResponseTime: duration,
+		CheckedAt:    start.UTC(),
 	}
 
 	if err != nil {

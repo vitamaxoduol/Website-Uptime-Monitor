@@ -1,9 +1,10 @@
-package internal
+package checker
 
 import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 )
 
 func TestCheckWebsiteOK(t *testing.T) {
@@ -65,5 +66,32 @@ func TestCheckWebsiteInvalidURL(t *testing.T) {
 
 	if result.StatusCode != 0 {
 		t.Errorf("expected status 0 without a reponse, got %d", result.StatusCode)
+	}
+}
+
+func TestCheckWebsiteTimestamp(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(
+		func(writer http.ResponseWriter, request *http.Request) {
+			writer.WriteHeader(http.StatusOK)
+		},
+	))
+
+	defer server.Close()
+
+	before := time.Now()
+	result, err := CheckWebsite(server.Client(), server.URL)
+	after := time.Now()
+
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if result.CheckedAt.Before(before) || result.CheckedAt.After(after) {
+		t.Errorf(
+			"expected check time between %v and %v, got %v",
+			before,
+			after,
+			result.CheckedAt,
+		)
 	}
 }
