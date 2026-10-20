@@ -25,6 +25,12 @@ func main() {
 		"Maximum time to wait for a website reponse",
 	)
 
+	history := flag.Bool(
+		"history",
+		false,
+		"Show the last 10 saved checks",
+	)
+
 	flag.Parse()
 
 	if *timeout <= 0 {
@@ -38,6 +44,35 @@ func main() {
 		return
 	}
 	defer db.Close()
+
+	if *history {
+		checks, err := storage.ListChecks(db, 10)
+		if err != nil {
+			log.Printf("No checks saved yet")
+			return
+		}
+
+		if len(checks) == 0 {
+			fmt.Println("No checks saved yet")
+			return
+		}
+
+		for _, check := range checks {
+			fmt.Printf(
+				"URL: %s | Status: %d | Response time: %s | Checked at: %s\n",
+				check.URL,
+				check.StatusCode,
+				time.Duration(check.ResponseTimeNS),
+				check.CheckedAt,
+			)
+
+			if check.ErrorMessage != "" {
+				fmt.Printf(" Error: %s\n", check.ErrorMessage)
+			}
+		}
+
+		return
+	}
 
 	client := &http.Client{
 		Timeout: *timeout,

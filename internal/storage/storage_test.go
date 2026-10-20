@@ -67,3 +67,48 @@ func TestSaveCheckFailure(t *testing.T) {
 		t.Errorf("unexpected error message: %q", errorMessage)
 	}
 }
+
+func TestListChecksWebsiteNewestFirst(t *testing.T) {
+	db, err := Open(filepath.Join(t.TempDir(), "test.db"))
+	if err != nil {
+		t.Fatalf("open database: %v", err)
+	}
+	defer db.Close()
+
+	urls := []string{
+		"https://first.example",
+		"https://second.example",
+		"https://third.example",
+	}
+
+	for _, url := range urls {
+		err := SaveCheck(
+			db,
+			url,
+			200,
+			25*time.Millisecond,
+			time.Now().UTC(),
+			nil,
+		)
+		if err != nil {
+			t.Fatalf("save check for %s: %v", url, err)
+		}
+	}
+
+	checks, err := ListChecks(db, 2)
+	if err != nil {
+		t.Fatalf("list checks, got %v", err)
+	}
+
+	if len(checks) != 2 {
+		t.Fatalf("expected 2 checks, got %d", len(checks))
+	}
+
+	if checks[0].URL != urls[2] {
+		t.Errorf("expected newest URL %q, got %q", urls[2], checks[0].URL)
+	}
+
+	if checks[1].URL != urls[1] {
+		t.Errorf("expected second newest URL %q, got %q", urls[1], checks[1].URL)
+	}
+}
