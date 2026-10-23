@@ -8,7 +8,7 @@ import (
 	"time"
 
 	checker "github.com/vitamaxoduol/Website-Uptime-Monitor/internal/checker"
-	"github.com/vitamaxoduol/Website-Uptime-Monitor/internal/storage"
+	storage "github.com/vitamaxoduol/Website-Uptime-Monitor/internal/storage"
 )
 
 func main() {
@@ -31,10 +31,68 @@ func main() {
 		"Show the last 10 saved checks",
 	)
 
+	addMonitor := flag.String(
+		"add-monitor",
+		"",
+		"Website URL to save as a monitor",
+	)
+	interval := flag.Int(
+		"interval",
+		60,
+		"Monitor check interval in seconds",
+	)
+
+	listMonitors := flag.Bool(
+		"list-monitors",
+		false,
+		"List saved monitors",
+	)
+
+	deleteMonitor := flag.Int64(
+		"delete-monitor",
+		0,
+		"ID of the monitor to delete",
+	)
+
 	flag.Parse()
 
+	// this block rejects conflicting flags
+	actionCount := 0
+
+	flag.Visit(func(currentFlag *flag.Flag) {
+		switch currentFlag.Name {
+		case "add-monitor", "list-monitors", "delete-monitor", "history":
+			actionCount++
+		}
+	})
+
+	if actionCount > 1 {
+		log.Print("Choose only action: -add-monitor, -list-monitors, -delete-monitor, or -history")
+		return
+	}
 	if *timeout <= 0 {
 		log.Print("Timeout must be greater than zero")
+		return
+	}
+
+	invalidAction := false
+
+	flag.Visit(func(currentFlag *flag.Flag) {
+		switch currentFlag.Name {
+		case "add-monitor":
+			if *addMonitor == "" {
+				log.Print("-add-monitor requires a website URL")
+				invalidAction = true
+			}
+		case "delete-monitor":
+			if *deleteMonitor <= 0 {
+				log.Print("-delete-monitor requires a positive monitor ID")
+				invalidAction = true
+			}
+		}
+	})
+
+	if invalidAction {
 		return
 	}
 
@@ -44,6 +102,63 @@ func main() {
 		return
 	}
 	defer db.Close()
+
+	if *addMonitor != "" {
+		id, err := storage.CreateMonitor(db, *addMonitor, *interval)
+		if err != nil {
+			log.Printf("Could not create monitor: %v", err)
+			return
+		}
+
+		fmt.Printf(
+			"Monitor created  | ID: %d | URL: %s | Interval: %ds\n",
+			id,
+			*addMonitor,
+			*interval,
+		)
+		return
+	}
+
+	if *listMonitors {
+		monitors, err := storage.ListMonitors(db)
+		if err != nil {
+			log.Fatalf("Could not list monitors: %v", err)
+			return
+		}
+
+		if len(monitors) == 0 {
+			fmt.Println("No monitors found yet")
+		}
+
+		for _, monitor := range monitors {
+			fmt.Printf(
+				"ID: %d | URL: %s | Interval: %ds | Created at: %s\n",
+				monitor.ID,
+				monitor.URL,
+				monitor.IntervalSeconds,
+				monitor.CreatedAt,
+			)
+
+		}
+
+		return
+	}
+
+	if *deleteMonitor != 0 {
+		deleted, err := storage.DeleteMonitor(db, *deleteMonitor)
+		if err != nil {
+			log.Printf("Could not delete monitor: %v", err)
+			return
+		}
+
+		if !deleted {
+			fmt.Printf("No monitor found with ID %d\n", *deleteMonitor)
+			return
+		}
+
+		fmt.Printf("Monitor deleted | ID: %d\n", *deleteMonitor)
+		return
+	}
 
 	if *history {
 		checks, err := storage.ListChecks(db, 10)
