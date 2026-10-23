@@ -48,6 +48,10 @@ Response times and timestamps vary between runs.
 | `-url` | `https://www.example.com` | Website URL to check |
 | `-timeout` | `10s` | Request timeout; must be greater than zero |
 | `-history` | `false` | Display the last 10 saved checks without running a new check |
+| `-add-monitor` | `""` | Save a website URL as a monitor |
+| `-interval` | `60` | Monitor check interval in seconds; must be positive |
+| `-list-monitors` | `false` | List saved monitors |
+| `-delete-monitor` | `0` | Delete a monitor by its positive ID |
 
 Display help:
 
@@ -68,6 +72,32 @@ Failed checks include their error message. Status `0` means no HTTP response was
 The application creates `uptime.db` in the current working directory and initializes its table automatically. Run commands from the repository root to consistently use the same database.
 
 Local database files are excluded from Git.
+
+## Managing Monitors
+
+Create a monitor:
+
+```bash
+go run ./cmd/uptime-monitor -add-monitor https://go.dev -interval 60
+```
+
+List monitors:
+
+```bash
+go run ./cmd/uptime-monitor -list-monitors
+```
+
+Delete a monitor using its ID from the list:
+
+```bash
+go run ./cmd/uptime-monitor -delete-monitor 1
+```
+
+Use only one action per run: `-add-monitor`, `-list-monitors`,
+`-delete-monitor`, or `-history`.
+
+Monitor intervals are stored for future scheduling; automatic checks are
+not implemented yet. Deleting a monitor preserves existing check history.
 
 ## Running Tests
 
@@ -123,7 +153,6 @@ README.md
 
 ## Planned Improvements
 
-- Saved monitors with create, list, and delete operations.
 - HTTP API for monitor management and check history.
 - Scheduled background checks.
 - Bounded concurrency and graceful shutdown.
